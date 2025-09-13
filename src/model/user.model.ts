@@ -1,5 +1,4 @@
 import mongoose, { Types } from "mongoose";
-import { string } from "zod";
 
 export enum GenderType {
     male="male",
@@ -9,6 +8,10 @@ export enum RoleType {
     user="user",
     admin="admin"
 }
+export enum ProviderType{
+    system="system",
+    google="google"
+}
 export interface IUser{
     _id:Types.ObjectId,
     fName:string,
@@ -17,11 +20,15 @@ export interface IUser{
     email:string,
     password:string,
     age:number,
+    image?:string,
+    provider:ProviderType,
     phone?:string,
     address?:string,
     gender:GenderType,
     role?:RoleType,
     otp?:string,
+    confirmed:boolean,
+    changCredentials?:Date,
     createdAt:Date,
     updatedAt:Date
 }
@@ -30,11 +37,16 @@ const userSchema =new mongoose.Schema<IUser>({
     fName:{type:String,required:true,minLength:3,maxLength:10,trim:true},
     lName:{type:String,minLength:3,required:true,maxLength:10,trim:true},
     email:{type:String,required:true,unique:true,trim:true},
-    password:{type:String,required:true,minLength:6},
+    password:{type:String,trim:true,required:function(){
+        return this.provider===ProviderType.google?false:true
+    }},
     age:{type:Number,required:true,min:18},
     phone:{type:String},
     address:{type:String},
-    otp:{type:string},
+    otp:{type:String},
+    image:{type:String},
+    confirmed:{type:Boolean,default:false},
+    changCredentials:{type:Date},
     gender:{type:String,enum:GenderType,required:true},
     role:{type:String,enum:RoleType,default:RoleType.user},
 },{

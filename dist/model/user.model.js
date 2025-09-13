@@ -3,9 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RoleType = exports.GenderType = void 0;
+exports.ProviderType = exports.RoleType = exports.GenderType = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
-const zod_1 = require("zod");
 var GenderType;
 (function (GenderType) {
     GenderType["male"] = "male";
@@ -16,15 +15,25 @@ var RoleType;
     RoleType["user"] = "user";
     RoleType["admin"] = "admin";
 })(RoleType || (exports.RoleType = RoleType = {}));
+var ProviderType;
+(function (ProviderType) {
+    ProviderType["system"] = "system";
+    ProviderType["google"] = "google";
+})(ProviderType || (exports.ProviderType = ProviderType = {}));
 const userSchema = new mongoose_1.default.Schema({
     fName: { type: String, required: true, minLength: 3, maxLength: 10, trim: true },
     lName: { type: String, minLength: 3, required: true, maxLength: 10, trim: true },
     email: { type: String, required: true, unique: true, trim: true },
-    password: { type: String, required: true, minLength: 6 },
+    password: { type: String, trim: true, required: function () {
+            return this.provider === ProviderType.google ? false : true;
+        } },
     age: { type: Number, required: true, min: 18 },
     phone: { type: String },
     address: { type: String },
-    otp: { type: zod_1.string },
+    otp: { type: String },
+    image: { type: String },
+    confirmed: { type: Boolean, default: false },
+    changCredentials: { type: Date },
     gender: { type: String, enum: GenderType, required: true },
     role: { type: String, enum: RoleType, default: RoleType.user },
 }, {

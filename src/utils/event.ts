@@ -4,7 +4,10 @@ import { emailTemplate } from "../service/email.temp"
 export const eventEmitter = new EventEmitter()
 
 eventEmitter.on("confirmEmail",async(data)=>{
-    const{email}=data
-    const otp =await GeneratOTP()
-    await sendEmail({to:email,subject:"confirmEmail",html:emailTemplate(otp as unknown as string,"Email Confirmation")})
+    const{email,otp}=data
+    await sendEmail({to:email,subject:"ConfirmEmail",html:emailTemplate(otp ,"Email Confirmation")})
+})
+eventEmitter.on("forgetPassword",async(data)=>{
+    const{email,otp}=data
+    await sendEmail({to:email,subject:"forgetPassword",html:emailTemplate(otp ,"forget password")})
 })
