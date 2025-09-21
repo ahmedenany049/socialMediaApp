@@ -52,4 +52,5 @@ userRouer.get("/refresh", (0, authentication_1.Authentication)(token_1.TokenType
 userRouer.get("/loginWithGmail", (0, validation_1.validation)(UV.loginWithGmailSchema), user_service_1.default.loginWithGmail);
 userRouer.patch("/forgetPassword", (0, validation_1.validation)(UV.forgetPasswordSchema), user_service_1.default.forgetPassword);
 userRouer.patch("/resetPassword", (0, validation_1.validation)(UV.resetPasswordSchema), user_service_1.default.resetPassword);
+userRouer.post("/uploadImage", authentication_1.Authentication, user_service_1.default.uploadImage);
 exports.default = userRouer;

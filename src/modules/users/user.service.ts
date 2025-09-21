@@ -11,6 +11,8 @@ import { v4 as uuidv4 } from "uuid";
 import { RevokTokenRepository } from "../../DB/repositories/revok.repository";
 import RevokTokenModdel from "../../model/revok.Token";
 import { OAuth2Client, TokenPayload } from "google-auth-library";
+import { createUpliadFilePreSignUrl, uploadFiles, uploadLargeFile } from "../../utils/s3.config";
+import { storageEnum } from "../../middleware/multer.cloud";
 
 class UserService {
     private _userModel =new UserRepository(userModdel)
@@ -130,11 +132,10 @@ class UserService {
         let user =await this._userModel.findOne({email})
         if(!user){
             user = await this._userModel.create({
-                userName:name!,
                 email:email!,
-                confirmed:email_verified!,
                 image:picture!,
-                password:uuidv4(),
+                userName:name!,
+                confirmed:email_verified!,
                 provider:ProviderType.google
             })
         }
@@ -185,6 +186,22 @@ class UserService {
         const hash =await Hash(password)
         await this._userModel.updateOne({email:user?.email},{password:hash,$unset:{otp:""}})
         return res.status(200).json({message:"success"})
+    }
+
+    //====================================================================
+    uploadImage=async(req:Request,res:Response,next:NextFunction)=>{
+        // const Key = await uploadFiles({
+        //     // files:req.files as Express.Multer.File[],
+        //     // path:`users/${req.user?._id}`,
+        //     // //storeType:storageEnum.cloud
+        // })
+        const{originalname,ContentType}=req.body
+        const url =await createUpliadFilePreSignUrl({
+            originalname,
+            ContentType,
+            path:`users/${req.user?._id}`
+        })
+        return res.status(200).json({message:"success",url})
     }
 }
 export default new UserService()

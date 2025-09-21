@@ -27,7 +27,7 @@ export interface IUser{
     gender:GenderType,
     role?:RoleType,
     otp?:string,
-    confirmed:boolean,
+    confirmed?:boolean,
     changCredentials?:Date,
     createdAt:Date,
     updatedAt:Date
@@ -40,14 +40,19 @@ const userSchema =new mongoose.Schema<IUser>({
     password:{type:String,trim:true,required:function(){
         return this.provider===ProviderType.google?false:true
     }},
-    age:{type:Number,required:true,min:18},
+    age:{type:Number,min:18,required:function(){
+        return this.provider===ProviderType.google?false:true
+    }},
     phone:{type:String},
     address:{type:String},
     otp:{type:String},
     image:{type:String},
-    confirmed:{type:Boolean,default:false},
+    provider:{type:String,enum:ProviderType,default:ProviderType.system},
+    confirmed:{type:Boolean},
     changCredentials:{type:Date},
-    gender:{type:String,enum:GenderType,required:true},
+    gender:{type:String,enum:GenderType,required:function(){
+        return this.provider===ProviderType.google?false:true
+    }},
     role:{type:String,enum:RoleType,default:RoleType.user},
 },{
     timestamps:true,

@@ -4,6 +4,7 @@ import { validation } from "../../middleware/validation";
 import * as UV from "./user.validation";
 import { Authentication } from "../../middleware/authentication";
 import { TokenType } from "../../utils/token";
+import { fileValidation, multerCloud } from "../../middleware/multer.cloud";
 const userRouer = Router()
 userRouer.post("/signup",validation(UV.signUpSchema),US.signUp)
 userRouer.patch("/confirm",US.confirmEmail)
@@ -14,5 +15,8 @@ userRouer.get("/refresh",Authentication(TokenType.refresh),US.refreshToken)
 userRouer.get("/loginWithGmail",validation(UV.loginWithGmailSchema),US.loginWithGmail)
 userRouer.patch("/forgetPassword",validation(UV.forgetPasswordSchema),US.forgetPassword)
 userRouer.patch("/resetPassword",validation(UV.resetPasswordSchema),US.resetPassword)
+userRouer.post("/uploadImage",Authentication
+    //multerCloud({fileTypes:fileValidation.image} ).array("files")
+    ,US.uploadImage)
 
 export default userRouer

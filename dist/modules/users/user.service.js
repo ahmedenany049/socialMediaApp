@@ -48,6 +48,7 @@ const uuid_1 = require("uuid");
 const revok_repository_1 = require("../../DB/repositories/revok.repository");
 const revok_Token_1 = __importDefault(require("../../model/revok.Token"));
 const google_auth_library_1 = require("google-auth-library");
+const s3_config_1 = require("../../utils/s3.config");
 class UserService {
     _userModel = new user_repository_1.UserRepository(user_model_1.default);
     _revokToken = new revok_repository_1.RevokTokenRepository(revok_Token_1.default);
@@ -148,11 +149,10 @@ class UserService {
         let user = await this._userModel.findOne({ email });
         if (!user) {
             user = await this._userModel.create({
-                userName: name,
                 email: email,
-                confirmed: email_verified,
                 image: picture,
-                password: (0, uuid_1.v4)(),
+                userName: name,
+                confirmed: email_verified,
                 provider: user_model_1.ProviderType.google
             });
         }
@@ -196,6 +196,15 @@ class UserService {
         const hash = await (0, hash_1.Hash)(password);
         await this._userModel.updateOne({ email: user?.email }, { password: hash, $unset: { otp: "" } });
         return res.status(200).json({ message: "success" });
+    };
+    uploadImage = async (req, res, next) => {
+        const { originalname, ContentType } = req.body;
+        const url = await (0, s3_config_1.createUpliadFilePreSignUrl)({
+            originalname,
+            ContentType,
+            path: `users/${req.user?._id}`
+        });
+        return res.status(200).json({ message: "success", url });
     };
 }
 exports.default = new UserService();
