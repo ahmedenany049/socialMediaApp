@@ -89,15 +89,6 @@ class UserService {
         if (!await (0, hash_1.Compare)(password, user?.password)) {
             throw new classError_1.AppError("invalid password", 405);
         }
-        if (user.isTwoFAEnabled) {
-            const otp = Math.floor(100000 + Math.random() * 900000);
-            const hashedOTP = await (0, hash_1.Hash)(String(otp));
-            user.loginOtp = hashedOTP;
-            user.loginOtpExpiry = new Date(Date.now() + 5 * 60 * 1000);
-            await user.save();
-            event_1.eventEmitter.emit("sendEmail", { email: user.email, otp });
-            return res.status(200).json({ message: "OTP sent to your email, please confirm login" });
-        }
         const jwtid = (0, uuid_1.v4)();
         const access_token = await (0, token_1.GenerateToken)({
             payload: { id: user._id, email: user.email },
@@ -265,7 +256,7 @@ class UserService {
     deletefiles = async (req, res, next) => {
         const { path } = req.params;
         const Key = path.join("/");
-        const url = await (0, s3_config_1.deleteFiles)({
+        const url = await (0, s3_config_1.deletrFiles)({
             urls: [
                 "socialmediaApp/users/68cf0c47191f79cdc7fee5ee/545fd7fd-3cdf-4b03-a145-8c0f45f75918_Screenshot 2025-07-27 221230.png"
             ]
@@ -290,7 +281,7 @@ class UserService {
             throw new classError_1.AppError("not found", 404);
         }
         result = result?.Contents?.map((item) => item.Key);
-        await (0, s3_config_1.deleteFiles)({
+        await (0, s3_config_1.deletrFiles)({
             urls: result,
             Quiet: true
         });

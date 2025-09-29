@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { AppError } from "../../utils/classError";
-import { confirmEmailSchemaType, flagType, forgetPasswordSchemaType, loginWithGmailSchemaType,logoutSchemaType, resetPasswordSchemaType, signInSchemaType, signUpSchemaType } from "./user.validation";
+import { confirmEmailSchemaType, flagType, forgetPasswordSchemaType, freezeAccountSchemaType, loginWithGmailSchemaType,logoutSchemaType, resetPasswordSchemaType, signInSchemaType, signUpSchemaType, upDateEmailSchemaType, upDatePasswordSchemaType } from "./user.validation";
 import userModdel, { ProviderType, RoleType } from "../../model/user.model";
 import { UserRepository } from "../../DB/repositories/user.repository";
 import { Compare, Hash } from "../../utils/hash";
@@ -11,8 +11,12 @@ import { v4 as uuidv4 } from "uuid";
 import { RevokTokenRepository } from "../../DB/repositories/revok.repository";
 import RevokTokenModdel from "../../model/revok.Token";
 import { OAuth2Client, TokenPayload } from "google-auth-library";
-import { createUpliadFilePreSignUrl, uploadFiles, uploadLargeFile } from "../../utils/s3.config";
+import { createGetFileSignedUrl, createUpliadFilePreSignUrl, deleteFile, deleteFiles, getFile, listFiles, uploadFiles } from "../../utils/s3.config";
+import { promisify } from "node:util";
+import { pipeline } from "node:stream";
 import { storageEnum } from "../../middleware/multer.cloud";
+import {  ListObjectsV2CommandOutput } from "@aws-sdk/client-s3";
+const writePipeLine =promisify(pipeline)
 
 class UserService {
     private _userModel =new UserRepository(userModdel)
@@ -62,6 +66,15 @@ class UserService {
         if(!await Compare(password,user?.password!)){
             throw new AppError("invalid password",405)
         }
+        if (user.isTwoFAEnabled) {
+        const otp = Math.floor(100000 + Math.random() * 900000);
+        const hashedOTP = await Hash(String(otp));
+        user.loginOtp = hashedOTP;
+        user.loginOtpExpiry = new Date(Date.now() + 5 * 60 * 1000); 
+        await user.save();
+        eventEmitter.emit("sendEmail", { email: user.email, otp });
+        return res.status(200).json({ message: "OTP sent to your email, please confirm login" });}
+        //////////////////////////////////////////////////
         const jwtid = uuidv4()
         const access_token =await GenerateToken({
             payload:{id:user._id,email:user.email},
@@ -170,7 +183,6 @@ class UserService {
         eventEmitter.emit("forgetPassword",{email,otp})
         await this._userModel.updateOne({email:user?.email},{otp:hashedOTP})
         return res.status(200).json({message:"success send otp"})
-
     }
 
     //======================================================================
@@ -191,17 +203,176 @@ class UserService {
     //====================================================================
     uploadImage=async(req:Request,res:Response,next:NextFunction)=>{
         // const Key = await uploadFiles({
-        //     // files:req.files as Express.Multer.File[],
-        //     // path:`users/${req.user?._id}`,
-        //     // //storeType:storageEnum.cloud
+        //     files:req.files as Express.Multer.File[],
+        //     path:`users/${req.user?._id}`,
+        //     storeType:storageEnum.cloud
         // })
         const{originalname,ContentType}=req.body
-        const url =await createUpliadFilePreSignUrl({
+        const {url,Key} =await createUpliadFilePreSignUrl({
             originalname,
             ContentType,
-            path:`users/${req.user?._id}`
+            path:`users/${req.user?._id}/coverImage`
+        })
+        const user = await this._userModel.findOneAndUpdate({
+            _id:req.user?._id
+        },{
+            profileImage:Key,
+            tempProfileImage:req.user?.profileImage
+        })
+        if(!user){
+            throw new AppError("user not found",404)
+        }
+        eventEmitter.emit("UploadProfileImage",{userId:req.user?._id,oldKey:req.user?.profileImage,Key,expiresIn:60})
+        return res.status(200).json({message:"success",user,url})
+    }
+
+    //=====================================================================
+    getfile= async(req:Request,res:Response,next:NextFunction)=>{
+        const{path}=req.params as unknown as {path:string[]}
+        const{downloadName}=req.query as {downloadName:string}
+        const Key= path.join("/")
+        const result = await getFile({
+            Key
+        })
+        const stream= result.Body as NodeJS.ReadableStream
+        stream.pipe(res)
+        res.setHeader("Content-Type",result?.ContentType!)
+        if(downloadName){
+            res.setHeader("Content-Disposition",`attachment;filename${downloadName ||path.join("/").split("/").pop()}`)
+        }
+        await writePipeLine(stream,res)
+        return res.status(200).json({message:"success",result})
+    }
+
+    //===================================================================
+    creatFile= async(req:Request,res:Response,next:NextFunction)=>{
+        const{path}=req.params as unknown as {path:string[]}
+        const Key= path.join("/")
+        const{downloadName}=req.query as {downloadName:string}
+        const url = await createGetFileSignedUrl({
+            Key,
+            downloadName:downloadName?downloadName:undefined
         })
         return res.status(200).json({message:"success",url})
     }
+
+    //======================================================================
+    deletefile= async(req:Request,res:Response,next:NextFunction)=>{
+        const{path}=req.params as unknown as {path:string[]}
+        const Key= path.join("/")
+        const url = await deleteFile({
+            Key,
+        })
+        return res.status(200).json({message:"success",url})
+    }
+    
+    //====================================================================
+    deletefiles= async(req:Request,res:Response,next:NextFunction)=>{
+        const{path}=req.params as unknown as {path:string[]}
+        const Key= path.join("/")
+        const url = await deleteFiles({
+            urls:[
+                "socialmediaApp/users/68cf0c47191f79cdc7fee5ee/545fd7fd-3cdf-4b03-a145-8c0f45f75918_Screenshot 2025-07-27 221230.png"
+            ]
+        })
+        return res.status(200).json({message:"success",url})
+    }
+
+    //=====================================================================
+    listfile=async(req:Request,res:Response,next:NextFunction)=>{
+        let result = await listFiles({
+            path:"users/68cf0c47191f79cdc7fee5ee"
+        })
+        if(!result?.Contents){
+            throw new AppError("not found",404)
+        }
+        result =result?.Contents?.map((item)=>item.Key) as unknown as ListObjectsV2CommandOutput
+        return res.status(200).json({message:"success",result})
+    }
+
+    //=====================================================================
+    deleteFolder=async(req:Request,res:Response,next:NextFunction)=>{
+        let result = await listFiles({
+            path:"users/68cf0c47191f79cdc7fee5ee"
+        })
+        if(!result?.Contents){
+            throw new AppError("not found",404)
+        }
+        result =result?.Contents?.map((item)=>item.Key) as unknown as ListObjectsV2CommandOutput
+        await deleteFiles({
+            urls:result as unknown as string[],
+            Quiet:true
+        })
+        return res.status(200).json({message:"success",result})
+    }
+
+    //=====================================================================
+    freezeAccount=async(req:Request,res:Response,next:NextFunction)=>{
+        const{userId}:freezeAccountSchemaType=req.params as freezeAccountSchemaType
+        if(userId&&req.user?.role!==RoleType.admin){
+            throw new AppError("unAuthorized",405)
+        }
+        const user = await this._userModel.findOneAndUpdate({_id:userId||req.user?._id,deletedAt:{$exists:false}},
+            {deletedAt:new Date(),deletedBy:req.user?._id,changCredentials:new Date()})
+        if(!user){
+            throw new AppError("user not found",405)
+        }
+        return res.status(200).json({message:"success"})
+    }
+
+    //=====================================================================
+    unfreezeAccount=async(req:Request,res:Response,next:NextFunction)=>{
+        const{userId}:freezeAccountSchemaType=req.params as freezeAccountSchemaType
+        if(req.user?.role!==RoleType.admin){
+            throw new AppError("unAuthorized",405)
+        }
+        const user = await this._userModel.findOneAndUpdate({_id:userId,deletedAt:{xists:false},deletedBy:{$ne:userId}},{
+            $unset:{deletedAt:"",deletedBy:""},
+            restoredAt:new Date(),
+            restoredBy:req.user?._id
+        })
+        if(!user){
+            throw new AppError("user not found",405)
+        }
+        return res.status(200).json({message:"success"})
+    }
+
+    //=======================================================================
+    updatePassword = async (req: Request, res: Response, next: NextFunction) => {
+        const { email, newPassword }: upDatePasswordSchemaType = req.body
+        const user = await this._userModel.findOne({ email })
+        if (!user) {
+            throw new AppError("User not found", 404)
+        }
+        const hashedPassword = await Hash(newPassword)
+        await this._userModel.updateOne({ email},{password: hashedPassword })
+            return res.status(200).json({ message: "Password updated successfully" })
+    }
+
+    //======================================================================
+    updateEmail = async (req: Request, res: Response, next: NextFunction) => {
+        const { oldEmail, newEmail }:upDateEmailSchemaType = req.body
+        const user = await this._userModel.findOne({ email: oldEmail })
+        if (!user) {
+            throw new AppError("User not found", 404)
+        }
+        const isTaken = await this._userModel.findOne({ email: newEmail })
+        if (isTaken) {
+            throw new AppError("New email is already in use", 409)
+        }
+        await this._userModel.updateOne(
+            { email: oldEmail },
+            { email: newEmail, confirmed: false }
+        );
+        const otp = await GeneratOTP();
+        const hashedOTP = await Hash(String(otp))
+        await this._userModel.updateOne(
+            { email: newEmail },
+            { otp: hashedOTP }
+        );
+        eventEmitter.emit("updateEmail", { email: newEmail, otp })
+        return res.status(200).json({ message: "Email updated successfully" })
+    }
+
 }
 export default new UserService()

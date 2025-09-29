@@ -1,13 +1,14 @@
+import { config } from "dotenv"
 import path from "path"
 import { resolve } from "path"
 import express, {  NextFunction, Request, Response } from "express"
 import cors from "cors"
 import helmet from "helmet"
 import {rateLimit} from "express-rate-limit"
-import { config } from "dotenv"
 import { AppError } from "./utils/classError"
 import userRouer from "./modules/users/user.controller"
 import connectionDB from "./DB/connectionDB"
+import postRouer from "./modules/posts/post.controller"
 
 config({path:resolve("./config/.env")})
 const app :express.Application=express()
@@ -29,6 +30,7 @@ const bootStrap = async()=>{
     app.use(helmet())
     app.use(limiter)
     app.use("/users",userRouer)
+    app.use("/posts",postRouer)
     await connectionDB()
 
     app.use("{/*demo}",(req:Request,res:Response,next:NextFunction)=>{

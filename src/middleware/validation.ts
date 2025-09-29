@@ -10,6 +10,12 @@ export const validation = (schema:schemaType)=>{
         const validationError = []
         for (const key of Object.keys(schema) as requestType[]) {
             if(!schema[key])continue
+            if(req.file){
+                req.body.attachments == req.file
+            }
+            if(req?.files){                
+                req.body.attachments==req.files
+            }
             const result = schema[key].safeParse(req[key])
             if(!result.success){
                 validationError.push(result.error)
