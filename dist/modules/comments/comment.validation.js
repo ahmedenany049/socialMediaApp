@@ -33,20 +33,19 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.likePostSchema = exports.ActionEnum = exports.updatePostSchema = exports.createPostSchema = void 0;
+exports.createCommentSchema = void 0;
 const z = __importStar(require("zod"));
-const post_model_1 = require("../../model/post.model");
 const generalRules_1 = require("../../utils/generalRules");
-exports.createPostSchema = {
+exports.createCommentSchema = {
+    params: z.strictObject({
+        postId: generalRules_1.generalRules.id
+    }),
     body: z.strictObject({
         content: z.string().min(5).max(10000).optional(),
         attachments: z.array(generalRules_1.generalRules.file).min(1).max(2).optional(),
-        assetFolderId: z.string().optional(),
-        allowcomments: z.enum(post_model_1.AllowCommentEnum).default(post_model_1.AllowCommentEnum.allow).optional(),
-        availability: z.enum(post_model_1.AvailabilityEnum).default(post_model_1.AvailabilityEnum.public).optional(),
         tags: z.array(generalRules_1.generalRules.id).refine((value) => {
             return new Set(value).size === value.length;
-        }, { message: "Duplicate tags" })
+        }, { message: "Duplicate tags" }).optional()
     }).superRefine((data, ctx) => {
         if (!data.content && !data.attachments?.length) {
             ctx.addIssue({
@@ -55,38 +54,5 @@ exports.createPostSchema = {
                 message: "content or empty you are must enter content at least"
             });
         }
-    })
-};
-exports.updatePostSchema = {
-    body: z.strictObject({
-        content: z.string().min(5).max(10000).optional(),
-        attachments: z.array(generalRules_1.generalRules.file).min(1).max(2).optional(),
-        assetFolderId: z.string().optional(),
-        allowcomments: z.enum(post_model_1.AllowCommentEnum).default(post_model_1.AllowCommentEnum.allow).optional(),
-        availability: z.enum(post_model_1.AvailabilityEnum).default(post_model_1.AvailabilityEnum.public).optional(),
-        tags: z.array(generalRules_1.generalRules.id).refine((value) => {
-            return new Set(value).size === value.length;
-        }, { message: "Duplicate tags" }).optional()
-    }).superRefine((data, ctx) => {
-        if (!Object.values(data).length) {
-            ctx.addIssue({
-                code: "custom",
-                path: ["content"],
-                message: "at least one field is required"
-            });
-        }
-    })
-};
-var ActionEnum;
-(function (ActionEnum) {
-    ActionEnum["like"] = "like";
-    ActionEnum["unlike"] = "unlike";
-})(ActionEnum || (exports.ActionEnum = ActionEnum = {}));
-exports.likePostSchema = {
-    params: z.strictObject({
-        postId: generalRules_1.generalRules.id
-    }),
-    query: z.strictObject({
-        action: z.enum(ActionEnum).default(ActionEnum.like)
     })
 };

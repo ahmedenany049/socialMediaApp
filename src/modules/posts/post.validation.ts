@@ -23,10 +23,34 @@ export const createPostSchema ={
     })
 }
 
+//=====================================================
+export const updatePostSchema ={
+    body:z.strictObject({
+        content:z.string().min(5).max(10000).optional(),
+        attachments:z.array(generalRules.file).min(1).max(2).optional(),
+        assetFolderId:z.string().optional(),
+        allowcomments:z.enum(AllowCommentEnum).default(AllowCommentEnum.allow).optional(),
+        availability:z.enum(AvailabilityEnum).default(AvailabilityEnum.public).optional(),
+        tags:z.array(generalRules.id).refine((value)=>{
+            return new Set(value).size===value.length
+        },{message:"Duplicate tags"}).optional()
+    }).superRefine((data,ctx)=>{
+        if(!Object.values(data).length){
+            ctx.addIssue({
+                code:"custom",
+                path:["content"],
+                message:"at least one field is required"
+            })
+        }
+    })
+}
+
+//=====================================================
 export enum ActionEnum{
     like="like",
     unlike="unlike"
 }
+
 export const likePostSchema = {
     params:z.strictObject({
         postId:generalRules.id

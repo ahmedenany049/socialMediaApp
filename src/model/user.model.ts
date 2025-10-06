@@ -6,7 +6,8 @@ export enum GenderType {
 }
 export enum RoleType {
     user="user",
-    admin="admin"
+    admin="admin",
+    superAdmin = "superAdmin"
 }
 export enum ProviderType{
     system="system",
@@ -37,6 +38,7 @@ export interface IUser{
     isTwoFAEnabled?:boolean,
     changCredentials?:Date,
     loginOtp?:string,
+    friends?:Types.ObjectId[],
     loginOtpExpiry?:Date,
     createdAt:Date,
     updatedAt:Date
@@ -52,6 +54,7 @@ const userSchema =new mongoose.Schema<IUser>({
     age:{type:Number,min:18,required:function(){
         return this.provider===ProviderType.google?false:true
     }},
+    friends:[{type:Types.ObjectId,ref:"User"}],
     phone:{type:String},
     isTwoFAEnabled: { type: Boolean, default: false },
     loginOtp: { type: String },                       

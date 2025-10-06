@@ -51,10 +51,16 @@ const google_auth_library_1 = require("google-auth-library");
 const s3_config_1 = require("../../utils/s3.config");
 const node_util_1 = require("node:util");
 const node_stream_1 = require("node:stream");
+const post_repository_copy_1 = require("../../DB/repositories/post.repository copy");
+const post_model_1 = __importDefault(require("../../model/post.model"));
+const sendRequest_model_1 = __importDefault(require("../../model/sendRequest.model"));
+const friendRequest_repository_1 = require("../../DB/repositories/friendRequest.repository");
 const writePipeLine = (0, node_util_1.promisify)(node_stream_1.pipeline);
 class UserService {
     _userModel = new user_repository_1.UserRepository(user_model_1.default);
     _revokToken = new revok_repository_1.RevokTokenRepository(revok_Token_1.default);
+    _postModel = new post_repository_copy_1.postRepository(post_model_1.default);
+    _friendRequestModel = new friendRequest_repository_1.FriendRequestRepository(sendRequest_model_1.default);
     constructor() { }
     signUp = async (req, res, next) => {
         let { userName, email, password, cPassword, gender, address, age, phone } = req.body;
@@ -348,6 +354,50 @@ class UserService {
         await this._userModel.updateOne({ email: newEmail }, { otp: hashedOTP });
         event_1.eventEmitter.emit("updateEmail", { email: newEmail, otp });
         return res.status(200).json({ message: "Email updated successfully" });
+    };
+    dashBoard = async (req, res, next) => {
+        const result = await Promise.all([
+            this._userModel.find({ filter: {} }),
+            this._postModel.find({ filter: {} }),
+        ]);
+    };
+    sendRequest = async (req, res, next) => {
+        const { userId } = req.params;
+        const user = await this._userModel.findOne({ _id: userId });
+        if (!user) {
+            throw new classError_1.AppError("user not found", 404);
+        }
+        const checkRequest = await this._friendRequestModel.findOne({
+            createdBy: { $in: [req.user?._id, userId] },
+            sendTo: { $in: [req.user?._id, userId] }
+        });
+        if (req.user?._id == userId) {
+            throw new classError_1.AppError("you can't send requesr to yourself", 400);
+        }
+        if (checkRequest) {
+            throw new classError_1.AppError("request already sent", 400);
+        }
+        const friendRequest = await this._friendRequestModel.create({
+            createdBy: req.user?._id,
+            sendTo: userId
+        });
+        return res.status(200).json({ message: "success", friendRequest });
+    };
+    acceptRequest = async (req, res, next) => {
+        const { requestId } = req.params;
+        const checkRequest = await this._friendRequestModel.findOneAndUpdate({
+            _id: requestId,
+            sendTo: req.user?._id,
+            acceptedAt: { $exists: false }
+        }, { acceptedAt: new Date() }, { new: true });
+        if (!checkRequest) {
+            throw new classError_1.AppError("request not found", 400);
+        }
+        await Promise.all([
+            this._userModel.updateOne({ _id: checkRequest.createdBy }, { $push: { friends: checkRequest.sendTo } }),
+            this._userModel.updateOne({ _id: checkRequest.sendTo }, { $push: { friends: checkRequest.createdBy } }),
+        ]);
+        return res.status(200).json({ message: "success" });
     };
 }
 exports.default = new UserService();

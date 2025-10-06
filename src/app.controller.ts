@@ -9,6 +9,7 @@ import { AppError } from "./utils/classError"
 import userRouer from "./modules/users/user.controller"
 import connectionDB from "./DB/connectionDB"
 import postRouer from "./modules/posts/post.controller"
+import commentRouer from "./modules/comments/comment.controller"
 
 config({path:resolve("./config/.env")})
 const app :express.Application=express()

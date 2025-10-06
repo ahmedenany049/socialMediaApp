@@ -42,6 +42,8 @@ const validation_1 = require("../../middleware/validation");
 const UV = __importStar(require("./user.validation"));
 const authentication_1 = require("../../middleware/authentication");
 const token_1 = require("../../utils/token");
+const authorization_1 = require("../../middleware/authorization");
+const user_model_1 = require("../../model/user.model");
 const userRouer = (0, express_1.Router)();
 userRouer.post("/signup", (0, validation_1.validation)(UV.signUpSchema), user_service_1.default.signUp);
 userRouer.patch("/confirm", user_service_1.default.confirmEmail);
@@ -63,4 +65,7 @@ userRouer.delete("/freeze{/:userId}", (0, authentication_1.Authentication)(), (0
 userRouer.patch("/unfreeze/:userId", (0, authentication_1.Authentication)(), user_service_1.default.unfreezeAccount);
 userRouer.patch("/updatePassword", (0, authentication_1.Authentication)(), user_service_1.default.updatePassword);
 userRouer.patch("/updateEmail", (0, authentication_1.Authentication)(), user_service_1.default.updateEmail);
+userRouer.get("/dashboard", (0, authentication_1.Authentication)(), (0, authorization_1.Authorizatin)({ accessRoles: [user_model_1.RoleType.admin, user_model_1.RoleType.superAdmin] }), user_service_1.default.dashBoard);
+userRouer.post("/sendRequest/:userId", (0, authentication_1.Authentication)(), user_service_1.default.sendRequest);
+userRouer.patch("/acceptRequest/:requestId", (0, authentication_1.Authentication)(), user_service_1.default.acceptRequest);
 exports.default = userRouer;

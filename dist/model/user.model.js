@@ -44,6 +44,7 @@ var RoleType;
 (function (RoleType) {
     RoleType["user"] = "user";
     RoleType["admin"] = "admin";
+    RoleType["superAdmin"] = "superAdmin";
 })(RoleType || (exports.RoleType = RoleType = {}));
 var ProviderType;
 (function (ProviderType) {
@@ -60,6 +61,7 @@ const userSchema = new mongoose_1.default.Schema({
     age: { type: Number, min: 18, required: function () {
             return this.provider === ProviderType.google ? false : true;
         } },
+    friends: [{ type: mongoose_1.Types.ObjectId, ref: "User" }],
     phone: { type: String },
     isTwoFAEnabled: { type: Boolean, default: false },
     loginOtp: { type: String },

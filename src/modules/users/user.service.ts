@@ -16,11 +16,20 @@ import { promisify } from "node:util";
 import { pipeline } from "node:stream";
 import { storageEnum } from "../../middleware/multer.cloud";
 import {  ListObjectsV2CommandOutput } from "@aws-sdk/client-s3";
+import { postRepository } from "../../DB/repositories/post.repository copy";
+import PostModdel from "../../model/post.model";
+import FriendRequestModdel from "../../model/sendRequest.model";
+import { FriendRequestRepository } from "../../DB/repositories/friendRequest.repository";
+import { Types } from "mongoose";
+import id from "zod/v4/locales/id.js";
 const writePipeLine =promisify(pipeline)
 
 class UserService {
     private _userModel =new UserRepository(userModdel)
     private _revokToken =new RevokTokenRepository(RevokTokenModdel)
+    private _postModel =new postRepository(PostModdel)
+    private _friendRequestModel =new FriendRequestRepository(FriendRequestModdel)
+    
     constructor(){}
 
     //========================================================================
@@ -374,5 +383,54 @@ class UserService {
         return res.status(200).json({ message: "Email updated successfully" })
     }
 
+    //=========================================================================
+    dashBoard = async (req: Request, res: Response, next: NextFunction)=>{
+        const result = await Promise.all([
+            this._userModel.find({filter:{}}),
+            this._postModel.find({filter:{}}),
+        ])
+    }
+
+    //===================================================================
+    sendRequest = async (req: Request, res: Response, next: NextFunction)=>{
+        const {userId}=req.params
+        const user = await this._userModel.findOne({_id:userId})
+        if(!user){
+            throw new AppError("user not found",404)
+        }
+        const checkRequest = await this._friendRequestModel.findOne({
+            createdBy:{$in:[req.user?._id,userId]},
+            sendTo:{$in:[req.user?._id,userId]}
+        })
+        if(req.user?._id==userId){
+            throw new AppError("you can't send requesr to yourself",400)
+        }
+        if(checkRequest){
+            throw new AppError("request already sent",400)
+        }
+        const friendRequest = await this._friendRequestModel.create({
+            createdBy:req.user?._id as unknown as Types.ObjectId,
+            sendTo:userId as unknown as Types.ObjectId
+        }) 
+        return res.status(200).json({ message: "success",friendRequest })
+    }
+
+    //========================================================================
+    acceptRequest = async (req: Request, res: Response, next: NextFunction)=>{
+        const {requestId}=req.params
+        const checkRequest = await this._friendRequestModel.findOneAndUpdate({
+            _id:requestId,
+            sendTo:req.user?._id,
+            acceptedAt:{$exists:false}
+        },{acceptedAt:new Date()},{new:true})
+        if(!checkRequest){
+            throw new AppError("request not found",400)
+        }
+        await Promise.all([
+            this._userModel.updateOne({_id:checkRequest.createdBy},{$push:{friends:checkRequest.sendTo}}),
+            this._userModel.updateOne({_id:checkRequest.sendTo},{$push:{friends:checkRequest.createdBy}}),
+        ])
+        return res.status(200).json({ message: "success" })
+    }
 }
 export default new UserService()
