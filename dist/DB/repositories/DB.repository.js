@@ -9,8 +9,8 @@ class DbRepository {
     async create(data) {
         return this.model.create(data);
     }
-    async findOne(filter, select) {
-        return this.model.findOne(filter);
+    async findOne(filter, select, options) {
+        return this.model.findOne(filter, select, options);
     }
     async find({ filter, select, options }) {
         return this.model.find(filter, select, options);

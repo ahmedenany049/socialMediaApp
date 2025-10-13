@@ -46,7 +46,7 @@ const decodedTokenAndFeTchUser = async (token, signature) => {
     return { decoded, user };
 };
 exports.decodedTokenAndFeTchUser = decodedTokenAndFeTchUser;
-const GetSignature = async (tokenType, prefix) => {
+const GetSignature = async (prefix, tokenType = TokenType.access) => {
     if (tokenType === TokenType.access) {
         if (prefix === process.env.BEARER_USER) {
             return process.env.ACCESS_TOKEN_USER;

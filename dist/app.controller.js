@@ -13,6 +13,7 @@ const classError_1 = require("./utils/classError");
 const user_controller_1 = __importDefault(require("./modules/users/user.controller"));
 const connectionDB_1 = __importDefault(require("./DB/connectionDB"));
 const post_controller_1 = __importDefault(require("./modules/posts/post.controller"));
+const geteway_1 = require("./modules/geteway/geteway");
 (0, dotenv_1.config)({ path: (0, path_1.resolve)("./config/.env") });
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5000;
@@ -39,8 +40,9 @@ const bootStrap = async () => {
     app.use((err, req, res, next) => {
         return res.status(err.statusCode || 500).json({ message: err.message, stack: err.stack });
     });
-    app.listen(port, () => {
+    const httpServer = app.listen(port, () => {
         console.log(`server is running on port ${port}!`);
     });
+    (0, geteway_1.initialzationio)(httpServer);
 };
 exports.default = bootStrap;

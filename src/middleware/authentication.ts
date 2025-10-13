@@ -14,16 +14,16 @@ export const Authentication = (tokenType:TokenType=TokenType.access)=>{
         if(!prefix||!token){
             throw new AppError("token not exist",400)
         }
-        const signature = await GetSignature(tokenType,prefix)
+        const signature = await GetSignature(prefix,tokenType)
         if(!signature){
             throw new AppError("invalid signature",400);
         }
-        const decoded =await decodedTokenAndFeTchUser(token,signature)
+        const {user,decoded} =await decodedTokenAndFeTchUser(token,signature)
         if(!decoded){
             throw new AppError("invalid token",400);
         }
-        req.user=decoded?.user;
-        req.decoded=decoded?.decoded;
+        req.user=user;
+        req.decoded=decoded;
         return next()
     }
 }

@@ -13,16 +13,16 @@ const Authentication = (tokenType = token_1.TokenType.access) => {
         if (!prefix || !token) {
             throw new classError_1.AppError("token not exist", 400);
         }
-        const signature = await (0, token_1.GetSignature)(tokenType, prefix);
+        const signature = await (0, token_1.GetSignature)(prefix, tokenType);
         if (!signature) {
             throw new classError_1.AppError("invalid signature", 400);
         }
-        const decoded = await (0, token_1.decodedTokenAndFeTchUser)(token, signature);
+        const { user, decoded } = await (0, token_1.decodedTokenAndFeTchUser)(token, signature);
         if (!decoded) {
             throw new classError_1.AppError("invalid token", 400);
         }
-        req.user = decoded?.user;
-        req.decoded = decoded?.decoded;
+        req.user = user;
+        req.decoded = decoded;
         return next();
     };
 };

@@ -6,8 +6,8 @@ export abstract class DbRepository<Tdocument>{
     async create(data:Partial<Tdocument>):Promise<HydratedDocument<Tdocument>>{
         return this.model.create(data)
     }
-    async findOne(filter:RootFilterQuery<Tdocument>,select?:ProjectionType<Tdocument>):Promise<HydratedDocument<Tdocument>|null>{
-        return this.model.findOne(filter)
+    async findOne(filter:RootFilterQuery<Tdocument>,select?:ProjectionType<Tdocument>, options?: QueryOptions<Tdocument>):Promise<HydratedDocument<Tdocument>|null>{
+        return this.model.findOne(filter,select,options)
     }
     async find({filter,select,options}:{filter:RootFilterQuery<Tdocument>,select?:ProjectionType<Tdocument>,options?:QueryOptions<Tdocument>}):Promise<HydratedDocument<Tdocument>[]>{
         return this.model.find(filter,select,options)

@@ -9,8 +9,12 @@ import { AppError } from "./utils/classError"
 import userRouer from "./modules/users/user.controller"
 import connectionDB from "./DB/connectionDB"
 import postRouer from "./modules/posts/post.controller"
-import commentRouer from "./modules/comments/comment.controller"
-
+import { Server, Socket } from "socket.io"
+import { decodedTokenAndFeTchUser, GetSignature } from "./utils/token"
+import { HydratedDocument, HydrateOptions } from "mongoose"
+import { IUser } from "./model/user.model"
+import { JwtPayload } from "jsonwebtoken"
+import { initialzationio } from "./modules/geteway/geteway"
 config({path:resolve("./config/.env")})
 const app :express.Application=express()
 const port:string|number =process.env.PORT||5000
@@ -41,9 +45,11 @@ const bootStrap = async()=>{
         return res.status(err.statusCode as unknown as number||500).json({message:err.message,stack:err.stack})
     })
 
-    app.listen(port,()=>{
+    const httpServer=app.listen(port,()=>{
         console.log(`server is running on port ${port}!`);
     })
+
+    initialzationio(httpServer)
 }
 
 export default bootStrap
