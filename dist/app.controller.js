@@ -14,6 +14,7 @@ const user_controller_1 = __importDefault(require("./modules/users/user.controll
 const connectionDB_1 = __importDefault(require("./DB/connectionDB"));
 const post_controller_1 = __importDefault(require("./modules/posts/post.controller"));
 const geteway_1 = require("./modules/geteway/geteway");
+const chat_controller_1 = __importDefault(require("./modules/chats/chat.controller"));
 (0, dotenv_1.config)({ path: (0, path_1.resolve)("./config/.env") });
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5000;
@@ -33,6 +34,7 @@ const bootStrap = async () => {
     app.use(limiter);
     app.use("/users", user_controller_1.default);
     app.use("/posts", post_controller_1.default);
+    app.use("/chat", chat_controller_1.default);
     await (0, connectionDB_1.default)();
     app.use("{/*demo}", (req, res, next) => {
         throw new classError_1.AppError(`invalid url ${req.originalUrl}`, 404);

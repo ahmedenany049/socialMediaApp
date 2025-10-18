@@ -8,6 +8,8 @@ class chatGeteway {
     regester = (socket, io) => {
         this.chatEvent.sayHi(socket, io);
         this.chatEvent.sendMessage(socket, io);
+        this.chatEvent.join_room(socket, io);
+        this.chatEvent.sendGroupMessage(socket, io);
     };
 }
 exports.chatGeteway = chatGeteway;

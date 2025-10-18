@@ -9,12 +9,11 @@ import { AppError } from "./utils/classError"
 import userRouer from "./modules/users/user.controller"
 import connectionDB from "./DB/connectionDB"
 import postRouer from "./modules/posts/post.controller"
-import { Server, Socket } from "socket.io"
-import { decodedTokenAndFeTchUser, GetSignature } from "./utils/token"
-import { HydratedDocument, HydrateOptions } from "mongoose"
-import { IUser } from "./model/user.model"
-import { JwtPayload } from "jsonwebtoken"
 import { initialzationio } from "./modules/geteway/geteway"
+import { GraphQLEnumType, GraphQLID, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLSchema, GraphQLString } from "graphql"
+import { createHandler } from "graphql-http/lib/use/express"
+import { GenderType } from "./model/user.model"
+import chatRouter from "./modules/chats/chat.controller"
 config({path:resolve("./config/.env")})
 const app :express.Application=express()
 const port:string|number =process.env.PORT||5000
@@ -29,6 +28,8 @@ const limiter = rateLimit({
     legacyHeaders:false
 })
 
+
+
 const bootStrap = async()=>{
     app.use(express.json())
     app.use(cors())
@@ -36,6 +37,7 @@ const bootStrap = async()=>{
     app.use(limiter)
     app.use("/users",userRouer)
     app.use("/posts",postRouer)
+    app.use("/chat",chatRouter)
     await connectionDB()
 
     app.use("{/*demo}",(req:Request,res:Response,next:NextFunction)=>{

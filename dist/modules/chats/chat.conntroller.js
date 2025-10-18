@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const chate_service_1 = require("./chate.service");
+const authentication_1 = require("../../middleware/authentication");
+const multer_cloud_1 = require("../../middleware/multer.cloud");
+const CS = new chate_service_1.chatService();
+const chatRouter = (0, express_1.Router)({ mergeParams: true });
+chatRouter.get("/", (0, authentication_1.Authentication)(), CS.getChat);
+chatRouter.post("/", (0, authentication_1.Authentication)(), (0, multer_cloud_1.multerCloud)({ fileTypes: multer_cloud_1.fileValidation.image, storeType: multer_cloud_1.storageEnum.cloud }).single("attachment"), CS.createGroupChat);
+exports.default = chatRouter;

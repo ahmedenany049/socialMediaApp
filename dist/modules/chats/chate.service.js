@@ -10,6 +10,9 @@ const chat_model_1 = __importDefault(require("../../model/chat.model"));
 const user_repository_1 = require("../../DB/repositories/user.repository");
 const user_model_1 = __importDefault(require("../../model/user.model"));
 const geteway_1 = require("../geteway/geteway");
+const mongoose_1 = require("mongoose");
+const s3_config_1 = require("../../utils/s3.config");
+const uuid_1 = require("uuid");
 class chatService {
     _chatModel = new chat_repository_1.ChatRepository(chat_model_1.default);
     _userModel = new user_repository_1.UserRepository(user_model_1.default);
@@ -31,8 +34,40 @@ class chatService {
         }
         return res.status(200).json({ message: "success", Chat });
     };
+    getChatGroup = async (req, res, next) => {
+        const { groupId } = req.params;
+        const Chat = await this._chatModel.findOne({
+            _id: groupId,
+            participants: {
+                $in: [req?.user?._id]
+            },
+            group: { $exists: true }
+        }, undefined, {
+            populate: [{
+                    path: "messages.createdBy"
+                }]
+        });
+        if (!Chat) {
+            throw new classError_1.AppError("chat not found", 404);
+        }
+        return res.status(200).json({ message: "success", Chat });
+    };
     sayHi = (data, socket, io) => {
         console.log(data);
+    };
+    join_room = async (data, socket, io) => {
+        const { roomId } = data;
+        const chat = await this._chatModel.findOne({
+            roomId,
+            participants: {
+                $in: [socket.data.user._id]
+            },
+            group: { $exists: true }
+        });
+        if (!chat) {
+            throw new classError_1.AppError("chat not found", 404);
+        }
+        socket.join(chat?.roomId);
     };
     sendMessage = async (data, socket, io) => {
         const { chatId, sendTo, content } = data;
@@ -72,6 +107,70 @@ class chatService {
         }
         io.to(geteway_1.connectionSocket.get(createdBy.toString())).emit("successMessage", { content });
         io.to(geteway_1.connectionSocket.get(sendTo.toString())).emit("newMessage", { content, from: socket.data.user });
+    };
+    sendGroupMessage = async (data, socket, io) => {
+        const { groupId, content } = data;
+        const createdBy = socket?.data?.user?._id;
+        const Chat = await this._chatModel.findOneAndUpdate({
+            _id: groupId,
+            participants: {
+                $all: [createdBy]
+            },
+            group: { $exists: true }
+        }, {
+            $push: {
+                messages: {
+                    content,
+                    createdBy
+                }
+            }
+        });
+        if (!Chat) {
+            throw new classError_1.AppError("chat not found", 404);
+        }
+        io.to(geteway_1.connectionSocket.get(createdBy.toString())).emit("successMessage", { content });
+        io.to(Chat.roomId).emit("newMessage", { content, from: socket.data.user, groupId });
+    };
+    createGroupChat = async (req, res, next) => {
+        let { group, groupimage, participants } = req.body;
+        const createdBy = req.user?._id;
+        const dbParticipants = participants.map((participants) => mongoose_1.Types.ObjectId.createFromHexString(participants));
+        const users = await this._userModel.find({
+            filter: {
+                _id: {
+                    $in: participants
+                },
+                friends: {
+                    $in: [createdBy]
+                }
+            }
+        });
+        if (users.length !== participants.length) {
+            throw new classError_1.AppError("user not found", 405);
+        }
+        const roomId = group.replaceAll(/\s+/g, "_") + "_" + (0, uuid_1.v4)();
+        if (req?.file) {
+            groupimage = await (0, s3_config_1.uploadFile)({
+                path: `chat/${roomId}`,
+                file: req.file
+            });
+        }
+        dbParticipants.push(createdBy);
+        const chat = await this._chatModel.create({
+            group,
+            groupimage,
+            participants: dbParticipants,
+            createdBy,
+            roomId,
+            messages: []
+        });
+        if (!chat) {
+            if (groupimage) {
+                await (0, s3_config_1.deleteFile)({ Key: groupimage });
+            }
+            throw new classError_1.AppError("chat not created", 404);
+        }
+        return res.status(200).json({ message: "success", chat });
     };
 }
 exports.chatService = chatService;

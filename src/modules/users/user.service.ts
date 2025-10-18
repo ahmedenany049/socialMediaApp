@@ -22,6 +22,8 @@ import FriendRequestModdel from "../../model/sendRequest.model";
 import { FriendRequestRepository } from "../../DB/repositories/friendRequest.repository";
 import { Types } from "mongoose";
 import id from "zod/v4/locales/id.js";
+import { ChatRepository } from "../../DB/repositories/chat.repository";
+import chatModel from "../../model/chat.model";
 const writePipeLine =promisify(pipeline)
 
 class UserService {
@@ -29,6 +31,8 @@ class UserService {
     private _revokToken =new RevokTokenRepository(RevokTokenModdel)
     private _postModel =new postRepository(PostModdel)
     private _friendRequestModel =new FriendRequestRepository(FriendRequestModdel)
+    private _chatModel = new ChatRepository(chatModel)
+    
     
     constructor(){}
 
@@ -99,6 +103,17 @@ class UserService {
 
     //===========================================================================
     getProfile=async(req:Request,res:Response,next:NextFunction)=>{
+        const user = await this._userModel.findOne({_id:req?.user?._id},undefined,{
+            populate:[{
+                path:"friends"
+            }]
+        })
+        const groups = await this._chatModel.find({
+            filter:{
+                participants:{$in:[req?.user?._id]},
+                group:{$exists:true}
+            }
+        })
         return res.status(200).json({message:"success",user:req.user})
     }
 

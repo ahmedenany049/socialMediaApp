@@ -16,4 +16,14 @@ export class ChatEvent {
                 this._chatService.sendMessage(data,socket,io)
         })
     }
+    join_room = (socket:Socket,io:Server)=>{
+            return socket.on("join_room",(data)=>{
+                this._chatService.join_room(data,socket,io)
+        })
+    }
+    sendGroupMessage = (socket:Socket,io:Server)=>{
+            return socket.on("sendGroupMessage",(data)=>{
+                this._chatService.sendGroupMessage(data,socket,io)
+        })
+    }
 }

@@ -8,5 +8,7 @@ export class chatGeteway {
     regester = (socket:Socket,io:Server)=>{
         this.chatEvent.sayHi(socket,io)
         this.chatEvent.sendMessage(socket,io)
+        this.chatEvent.join_room(socket,io)
+        this.chatEvent.sendGroupMessage(socket,io)
     }
 }
