@@ -55,8 +55,13 @@ const post_repository_copy_1 = require("../../DB/repositories/post.repository co
 const post_model_1 = __importDefault(require("../../model/post.model"));
 const sendRequest_model_1 = __importDefault(require("../../model/sendRequest.model"));
 const friendRequest_repository_1 = require("../../DB/repositories/friendRequest.repository");
+const mongoose_1 = require("mongoose");
 const chat_repository_1 = require("../../DB/repositories/chat.repository");
 const chat_model_1 = __importDefault(require("../../model/chat.model"));
+const graphql_1 = require("graphql");
+const authentication_1 = require("../../middleware/authentication");
+const authorization_1 = require("../../middleware/authorization");
+const validation_1 = require("../../middleware/validation");
 const writePipeLine = (0, node_util_1.promisify)(node_stream_1.pipeline);
 class UserService {
     _userModel = new user_repository_1.UserRepository(user_model_1.default);
@@ -412,6 +417,26 @@ class UserService {
             this._userModel.updateOne({ _id: checkRequest.sendTo }, { $push: { friends: checkRequest.createdBy } }),
         ]);
         return res.status(200).json({ message: "success" });
+    };
+    getOneUser = async (parent, args, context) => {
+        const { user } = await (0, authentication_1.AuthenticationGQL)(context.req.headers.authorization);
+        await (0, validation_1.validationGQL)(user_validation_1.getOneUserSchema, args);
+        await (0, authorization_1.AuthorizatinGQL)({ accessRoles: [user_model_1.RoleType.admin, user_model_1.RoleType.superAdmin], role: user.role });
+        const userExist = await this._userModel.findOne({ _id: mongoose_1.Types.ObjectId.createFromHexString(args.id) });
+        if (!userExist) {
+            throw new graphql_1.GraphQLError("user not found", { extensions: { statusCode: 401 } });
+        }
+        return userExist;
+    };
+    createUser = async (parent, args) => {
+        const { fName, lName, age, email, password, gender } = args;
+        const user = await this._userModel.findOne({ email });
+        if (user) {
+            throw new graphql_1.GraphQLError("user already exist", { extensions: { statusCode: 404 } });
+        }
+        const hashedPassword = await (0, hash_1.Hash)(password);
+        const newUser = await this._userModel.create({ fName, lName, age, email, password: hashedPassword, gender });
+        return newUser;
     };
 }
 exports.default = new UserService();

@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import { ActionEnum, likePostSchemaType, unlikeType } from "./post.validation";
 import { UpdateQuery } from "mongoose";
 
-class UserService {
+class postService {
     private _userModel =new UserRepository(userModdel)
     private _postModel =new postRepository(PostModdel)
     constructor(){}
@@ -104,5 +104,20 @@ class UserService {
         const {curentPage,docs,countDocuments,numberOfPages} = await this._postModel.paginate({filter:{},query:{page,limit}})
         return res.status(200).json({message:"welcom",curentPage,numberOfPages,countDocuments,posts:docs})
     }
+
+    //===========================================GraphQL=================================
+    getPostsGQL =async (parent:any,args:any)=>{
+        const posts = await this._postModel.find({filter:{}})
+        return posts
+    }
+
+    //===================================================================================
+    likePostQL = async (parent: any, { postId, action }: any, context: any) => {
+        const userId = context.user._id;
+        const post = await this._postModel.findOneAndUpdate(
+            postId,
+            action === "unlike"? { $pull: { likes: userId } }: { $addToSet: { likes: userId } },{ new: true });
+        return post;
+    };
 }
-export default new UserService()
+export default new postService()

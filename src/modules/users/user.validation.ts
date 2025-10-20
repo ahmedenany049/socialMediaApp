@@ -1,6 +1,7 @@
 import z from "zod"
 import { GenderType } from "../../model/user.model"
 import { Types } from "mongoose"
+import { generalRules } from "../../utils/generalRules"
 
 export enum flagType{
     all="all",
@@ -90,6 +91,10 @@ export const upDatePasswordSchema ={
         newPassword:z.string()
     }).required()
 }
+
+export const getOneUserSchema =z.strictObject({
+    id:generalRules.id
+})
 
 export const upDateEmailSchema ={
     body:z.strictObject({

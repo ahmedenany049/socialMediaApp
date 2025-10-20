@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { AppError } from "../../utils/classError";
-import { confirmEmailSchemaType, flagType, forgetPasswordSchemaType, freezeAccountSchemaType, loginWithGmailSchemaType,logoutSchemaType, resetPasswordSchemaType, signInSchemaType, signUpSchemaType, upDateEmailSchemaType, upDatePasswordSchemaType } from "./user.validation";
+import { confirmEmailSchemaType, flagType, forgetPasswordSchemaType, freezeAccountSchemaType, getOneUserSchema, loginWithGmailSchemaType,logoutSchemaType, resetPasswordSchemaType, signInSchemaType, signUpSchemaType, upDateEmailSchemaType, upDatePasswordSchemaType } from "./user.validation";
 import userModdel, { ProviderType, RoleType } from "../../model/user.model";
 import { UserRepository } from "../../DB/repositories/user.repository";
 import { Compare, Hash } from "../../utils/hash";
@@ -11,19 +11,21 @@ import { v4 as uuidv4 } from "uuid";
 import { RevokTokenRepository } from "../../DB/repositories/revok.repository";
 import RevokTokenModdel from "../../model/revok.Token";
 import { OAuth2Client, TokenPayload } from "google-auth-library";
-import { createGetFileSignedUrl, createUpliadFilePreSignUrl, deleteFile, deleteFiles, getFile, listFiles, uploadFiles } from "../../utils/s3.config";
+import { createGetFileSignedUrl, createUpliadFilePreSignUrl, deleteFile, deleteFiles, getFile, listFiles } from "../../utils/s3.config";
 import { promisify } from "node:util";
 import { pipeline } from "node:stream";
-import { storageEnum } from "../../middleware/multer.cloud";
 import {  ListObjectsV2CommandOutput } from "@aws-sdk/client-s3";
 import { postRepository } from "../../DB/repositories/post.repository copy";
 import PostModdel from "../../model/post.model";
 import FriendRequestModdel from "../../model/sendRequest.model";
 import { FriendRequestRepository } from "../../DB/repositories/friendRequest.repository";
 import { Types } from "mongoose";
-import id from "zod/v4/locales/id.js";
 import { ChatRepository } from "../../DB/repositories/chat.repository";
 import chatModel from "../../model/chat.model";
+import { GraphQLError } from "graphql";
+import { AuthenticationGQL } from "../../middleware/authentication";
+import { AuthorizatinGQL } from "../../middleware/authorization";
+import { validationGQL } from "../../middleware/validation";
 const writePipeLine =promisify(pipeline)
 
 class UserService {
@@ -446,6 +448,29 @@ class UserService {
             this._userModel.updateOne({_id:checkRequest.sendTo},{$push:{friends:checkRequest.createdBy}}),
         ])
         return res.status(200).json({ message: "success" })
+    }
+
+    //============================================================GraphQL===================================================
+    getOneUser =async(parent:any,args:{id:string},context:any)=>{
+        const {user}=await AuthenticationGQL(context.req.headers.authorization)
+        await validationGQL<typeof args>(getOneUserSchema,args)
+        await AuthorizatinGQL({accessRoles:[RoleType.admin,RoleType.superAdmin],role:user.role!})
+        const userExist = await this._userModel.findOne({_id:Types.ObjectId.createFromHexString(args.id)})
+        if(!userExist){
+            throw new GraphQLError("user not found",{extensions:{statusCode:401}});
+        }
+        return userExist
+    }
+    //===================================================
+    createUser =async (parent:any,args:any)=>{
+        const {fName,lName,age,email,password,gender}=args
+        const user = await this._userModel.findOne({email})
+        if(user){
+            throw new GraphQLError("user already exist",{extensions:{statusCode:404}});
+        }
+        const hashedPassword = await Hash(password)
+        const newUser = await this._userModel.create({fName,lName,age,email,password:hashedPassword,gender})
+        return newUser
     }
 }
 export default new UserService()

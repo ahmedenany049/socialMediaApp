@@ -44,7 +44,7 @@ const post_model_1 = __importStar(require("../../model/post.model"));
 const s3_config_1 = require("../../utils/s3.config");
 const uuid_1 = require("uuid");
 const post_validation_1 = require("./post.validation");
-class UserService {
+class postService {
     _userModel = new user_repository_1.UserRepository(user_model_1.default);
     _postModel = new post_repository_copy_1.postRepository(post_model_1.default);
     constructor() { }
@@ -127,5 +127,14 @@ class UserService {
         const { curentPage, docs, countDocuments, numberOfPages } = await this._postModel.paginate({ filter: {}, query: { page, limit } });
         return res.status(200).json({ message: "welcom", curentPage, numberOfPages, countDocuments, posts: docs });
     };
+    getPostsGQL = async (parent, args) => {
+        const posts = await this._postModel.find({ filter: {} });
+        return posts;
+    };
+    likePostQL = async (parent, { postId, action }, context) => {
+        const userId = context.user._id;
+        const post = await this._postModel.findOneAndUpdate(postId, action === "unlike" ? { $pull: { likes: userId } } : { $addToSet: { likes: userId } }, { new: true });
+        return post;
+    };
 }
-exports.default = new UserService();
+exports.default = new postService();

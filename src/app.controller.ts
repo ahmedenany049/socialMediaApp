@@ -10,10 +10,10 @@ import userRouer from "./modules/users/user.controller"
 import connectionDB from "./DB/connectionDB"
 import postRouer from "./modules/posts/post.controller"
 import { initialzationio } from "./modules/geteway/geteway"
-import { GraphQLEnumType, GraphQLID, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLSchema, GraphQLString } from "graphql"
 import { createHandler } from "graphql-http/lib/use/express"
-import { GenderType } from "./model/user.model"
 import chatRouter from "./modules/chats/chat.controller"
+import { schemaGQL } from "./modules/graphql/schema.ggl"
+import { Authentication } from "./middleware/authentication"
 config({path:resolve("./config/.env")})
 const app :express.Application=express()
 const port:string|number =process.env.PORT||5000
@@ -29,7 +29,6 @@ const limiter = rateLimit({
 })
 
 
-
 const bootStrap = async()=>{
     app.use(express.json())
     app.use(cors())
@@ -39,6 +38,8 @@ const bootStrap = async()=>{
     app.use("/posts",postRouer)
     app.use("/chat",chatRouter)
     await connectionDB()
+
+    app.all("/graphql",createHandler({schema:schemaGQL,context:(req)=>({req})}))
 
     app.use("{/*demo}",(req:Request,res:Response,next:NextFunction)=>{
         throw new AppError(`invalid url ${req.originalUrl}`,404)
